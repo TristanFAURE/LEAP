@@ -49,7 +49,7 @@ if [[ ! -f "$ZIP_FILE" ]]; then
 fi
 
 # Unzip the file
-unzip "$ZIP_FILE" -d .
+unzip -o "$ZIP_FILE" -d .
 
 if [[ ! -f "$CERT_PATH" ]]; then
   echo "Failed to find the certificate in the extracted files."
