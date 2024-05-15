@@ -26,9 +26,27 @@ install_if_not_installed() {
   fi
 }
 
-# Install curl, wget, and unzip if not installed
-install_if_not_installed "curl"
-install_if_not_installed "wget"
+# Install curl if not installed
+if ! command -v curl &> /dev/null; then
+  install_if_not_installed "curl"
+fi
+
+# If curl installation failed, install wget
+if ! command -v curl &> /dev/null; then
+  install_if_not_installed "wget"
+fi
+
+# Check if curl or wget is available now
+if command -v curl &> /dev/null; then
+  DOWNLOAD_TOOL="curl"
+elif command -v wget &> /dev/null; then
+  DOWNLOAD_TOOL="wget"
+else
+  echo "Neither curl nor wget could be installed. Please install one of them manually and try again."
+  exit 1
+fi
+
+# Install unzip if not installed
 install_if_not_installed "unzip"
 
 # URL of the ZIP file to download
@@ -37,9 +55,9 @@ ZIP_FILE="ZscalerRootCerts-Tunnel2.0.zip"
 CERT_PATH="ZscalerRootCerts/ZscalerRootCertificate-2048-SHA256.crt"
 
 # Download the ZIP file
-if command -v curl &> /dev/null; then
+if [[ "$DOWNLOAD_TOOL" == "curl" ]]; then
   curl --insecure -o "$ZIP_FILE" "$ZIP_URL"
-elif command -v wget &> /dev/null; then
+elif [[ "$DOWNLOAD_TOOL" == "wget" ]]; then
   wget --no-check-certificate -O "$ZIP_FILE" "$ZIP_URL"
 fi
 
