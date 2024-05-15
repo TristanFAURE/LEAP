@@ -66,13 +66,15 @@ if [[ ! -f "$ZIP_FILE" ]]; then
   exit 1
 fi
 
-# Unzip the file
-unzip -o "$ZIP_FILE" -d .
+# Unzip the file silently
+unzip -o -qq "$ZIP_FILE" -d .
 
 if [[ ! -f "$CERT_PATH" ]]; then
   echo "Failed to find the certificate in the extracted files."
   exit 1
 fi
+
+echo "Certificate extracted successfully."
 
 # Function to install the certificate on Debian
 install_cert_debian() {
@@ -133,3 +135,9 @@ else
   echo "Unsupported operating system."
   exit 1
 fi
+
+# Clean up the uncompressed files
+rm -rf "ZscalerRootCerts"
+rm "$ZIP_FILE"
+
+echo "Cleanup completed."
