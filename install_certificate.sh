@@ -100,6 +100,12 @@ install_cert_fedora() {
   update-ca-trust
 }
 
+# Function to install the certificate on Linux Mint
+install_cert_linuxmint() {
+  cp "$CERT_PATH" /usr/local/share/ca-certificates/
+  update-ca-certificates
+}
+
 # Detect the OS and install the certificate accordingly
 if [[ -f /etc/debian_version ]]; then
   # Debian or Ubuntu
@@ -111,6 +117,9 @@ if [[ -f /etc/debian_version ]]; then
     elif [[ "$ID" == "ubuntu" ]]; then
       install_cert_ubuntu
       echo "Certificate installed successfully on Ubuntu."
+    elif [[ "$ID" == "linuxmint" ]]; then
+      install_cert_linuxmint
+      echo "Certificate installed successfully on Linux Mint."
     else
       echo "Unsupported Debian-based distribution: $ID"
       exit 1
