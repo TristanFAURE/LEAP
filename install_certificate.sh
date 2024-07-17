@@ -49,92 +49,112 @@ fi
 # Install unzip if not installed
 install_if_not_installed "unzip"
 
-# URL of the ZIP file to download
-ZIP_URL="https://doc-network.mcs.thalesdigital.io/assets/files/ZscalerRootCerts-Tunnel2.0-391a32d30045db061f3cc22011049c8e.zip"
-ZIP_FILE="ZscalerRootCerts-Tunnel2.0.zip"
-CERT_PATH="ZscalerRootCerts/ZscalerRootCertificate-2048-SHA256.crt"
+# URLs of the certificates to download
+CERT_URLS=(
+  "https://doc-network.mcs.thalesdigital.io/assets/files/ZscalerRootCerts-Tunnel2.0-391a32d30045db061f3cc22011049c8e.zip"
+  "http://crl.pki.thalesgroup.com/ThalesRootCAV3.crt"
+  "http://crl.pki.thalesgroup.com/ThalesDevicesCAV4.crt"
+  "http://crl.pki.thalesgroup.com/ThalesDevicesLevel2CAV4.crt"
+  "http://crl.pki.thalesgroup.com/ThalesDevicesLevel1CAV4.crt"
+  "http://crl.pki.thalesgroup.com/ThalesDevicesLevel3CAV4.crt"
+)
 
-# Download the ZIP file
-if [[ "$DOWNLOAD_TOOL" == "curl" ]]; then
-  curl --insecure -o "$ZIP_FILE" "$ZIP_URL"
-elif [[ "$DOWNLOAD_TOOL" == "wget" ]]; then
-  wget --no-check-certificate -O "$ZIP_FILE" "$ZIP_URL"
-fi
+# Function to download and install a certificate
+download_and_install_cert() {
+  local url="$1"
+  local filename=$(basename "$url")
+  local cert_dir=""
 
-if [[ ! -f "$ZIP_FILE" ]]; then
-  echo "Failed to download the ZIP file."
-  exit 1
-fi
+  if [[ -f /etc/debian_version ]]; then
+    # Use /usr/local/share/ca-certificates if it exists, otherwise /etc/ssl/certs
+    if [[ -d /usr/local/share/ca-certificates ]]; then
+      cert_dir="/usr/local/share/ca-certificates"
+    else
+      cert_dir="/etc/ssl/certs"
+    fi
+  elif [[ -f /etc/redhat-release ]]; then
+    cert_dir="/etc/pki/ca-trust/source/anchors"
+  else
+    echo "Unsupported operating system."
+    exit 1
+  fi
 
-# Unzip the file silently
-unzip -o -qq "$ZIP_FILE" -d .
+  local cert_path="$cert_dir/$filename"
 
-if [[ ! -f "$CERT_PATH" ]]; then
-  echo "Failed to find the certificate in the extracted files."
-  exit 1
-fi
+  if [[ "$DOWNLOAD_TOOL" == "curl" ]]; then
+    curl --insecure -o "$filename" "$url"
+  elif [[ "$DOWNLOAD_TOOL" == "wget" ]]; then
+    wget --no-check-certificate -O "$filename" "$url"
+  fi
 
-echo "Certificate extracted successfully."
+  if [[ ! -f "$filename" ]]; then
+    echo "Failed to download $filename."
+    exit 1
+  fi
 
-# Function to install the certificate on Debian
-install_cert_debian() {
-  cp "$CERT_PATH" /usr/local/share/ca-certificates/
+  if [[ "$filename" == *.zip ]]; then
+    unzip -o -qq "$filename" -d .
+    rm "$filename"
+    for cert in ZscalerRootCerts/*.crt; do
+      local cert_filename=$(basename "$cert")
+      local cert_dest="$cert_dir/$cert_filename"
+      if [[ ! -f "$cert_dest" ]]; then
+        cp "$cert" "$cert_dest"
+      fi
+    done
+    rm -rf "ZscalerRootCerts"
+  else
+    if [[ ! -f "$cert_path" ]]; then
+      cp "$filename" "$cert_path"
+    fi
+    rm "$filename"
+  fi
+}
+
+# Download and install each certificate
+for url in "${CERT_URLS[@]}"; do
+  download_and_install_cert "$url"
+done
+
+# Function to install the certificates on Debian-based systems
+update_certificates_debian() {
   update-ca-certificates
 }
 
-# Function to install the certificate on Ubuntu
-install_cert_ubuntu() {
-  cp "$CERT_PATH" /usr/local/share/ca-certificates/
-  update-ca-certificates
-}
-
-# Function to install the certificate on Red Hat
-install_cert_redhat() {
-  cp "$CERT_PATH" /etc/pki/ca-trust/source/anchors/
+# Function to install the certificates on Red Hat-based systems
+update_certificates_redhat() {
   update-ca-trust
 }
 
-# Function to install the certificate on Fedora
-install_cert_fedora() {
-  cp "$CERT_PATH" /etc/pki/ca-trust/source/anchors/
-  update-ca-trust
-}
-
-# Function to install the certificate on Linux Mint
-install_cert_linuxmint() {
-  cp "$CERT_PATH" /usr/local/share/ca-certificates/
-  update-ca-certificates
-}
-
-# Detect the OS and install the certificate accordingly
+# Detect the OS and update the certificate store accordingly
 if [[ -f /etc/debian_version ]]; then
-  # Debian or Ubuntu
+  # Debian, Ubuntu, Linux Mint
   if [[ -f /etc/os-release ]]; then
     . /etc/os-release
     if [[ "$ID" == "debian" ]]; then
-      install_cert_debian
-      echo "Certificate installed successfully on Debian."
+      update_certificates_debian
+      echo "Certificates installed successfully on Debian."
     elif [[ "$ID" == "ubuntu" ]]; then
-      install_cert_ubuntu
-      echo "Certificate installed successfully on Ubuntu."
+      update_certificates_debian
+      echo "Certificates installed successfully on Ubuntu."
     elif [[ "$ID" == "linuxmint" ]]; then
-      install_cert_linuxmint
-      echo "Certificate installed successfully on Linux Mint."
+      update_certificates_debian
+      echo "Certificates installed successfully on Linux Mint."
     else
       echo "Unsupported Debian-based distribution: $ID"
       exit 1
     fi
   fi
 elif [[ -f /etc/redhat-release ]]; then
-  # Red Hat or Fedora
+  # Red Hat, Fedora
   if [[ -f /etc/os-release ]]; then
     . /etc/os-release
     if [[ "$ID" == "rhel" ]]; then
-      install_cert_redhat
-      echo "Certificate installed successfully on Red Hat."
+      update_certificates_redhat
+      echo "Certificates installed successfully on Red Hat."
     elif [[ "$ID" == "fedora" ]]; then
-      install_cert_fedora
-      echo "Certificate installed successfully on Fedora."
+      update_certificates_redhat
+      echo "Certificates installed successfully on Fedora."
     else
       echo "Unsupported Red Hat-based distribution: $ID"
       exit 1
@@ -145,8 +165,4 @@ else
   exit 1
 fi
 
-# Clean up the uncompressed files
-rm -rf "ZscalerRootCerts"
-rm "$ZIP_FILE"
-
-echo "Cleanup completed."
+echo "Certificates installed successfully."
