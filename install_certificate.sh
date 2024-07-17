@@ -15,6 +15,8 @@ install_if_not_installed() {
       apt-get update && apt-get install -y "$package"
     elif [[ -f /etc/redhat-release ]]; then
       yum install -y "$package"
+    elif grep -qi "SUSE" /etc/os-release; then
+      zypper install -y "$package"
     else
       echo "Unsupported operating system for package installation."
       exit 1
@@ -74,6 +76,8 @@ download_and_install_cert() {
     fi
   elif [[ -f /etc/redhat-release ]]; then
     cert_dir="/etc/pki/ca-trust/source/anchors"
+  elif grep -qi "SUSE" /etc/os-release; then
+    cert_dir="/usr/share/pki/trust/anchors"
   else
     echo "Unsupported operating system."
     exit 1
@@ -105,7 +109,7 @@ download_and_install_cert() {
     rm -rf "ZscalerRootCerts"
   else
     if [[ ! -f "$cert_path" ]]; then
-      cp "$filename" "$cert_path"
+	cp "$filename" "$cert_path"
     fi
     rm "$filename"
   fi
@@ -116,53 +120,24 @@ for url in "${CERT_URLS[@]}"; do
   download_and_install_cert "$url"
 done
 
-# Function to install the certificates on Debian-based systems
-update_certificates_debian() {
-  update-ca-certificates
+# Function to update CA certificates
+update_certificates() {
+  if [[ -f /etc/debian_version ]] || [[ -f /etc/ubuntu-release ]] || [[ -f /etc/linuxmint-release ]]; then
+    # Debian, Ubuntu, Linux Mint
+    update-ca-certificates
+  elif [[ -f /etc/redhat-release ]]; then
+    # Red Hat, Fedora
+    update-ca-trust
+  elif grep -qi "SUSE" /etc/os-release; then
+    # SUSE and openSUSE
+    update-ca-certificates
+  else
+    echo "Unsupported operating system for updating CA certificates."
+    exit 1
+  fi
 }
 
-# Function to install the certificates on Red Hat-based systems
-update_certificates_redhat() {
-  update-ca-trust
-}
+# Update CA certificates for the installed certificates
+update_certificates
 
-# Detect the OS and update the certificate store accordingly
-if [[ -f /etc/debian_version ]]; then
-  # Debian, Ubuntu, Linux Mint
-  if [[ -f /etc/os-release ]]; then
-    . /etc/os-release
-    if [[ "$ID" == "debian" ]]; then
-      update_certificates_debian
-      echo "Certificates installed successfully on Debian."
-    elif [[ "$ID" == "ubuntu" ]]; then
-      update_certificates_debian
-      echo "Certificates installed successfully on Ubuntu."
-    elif [[ "$ID" == "linuxmint" ]]; then
-      update_certificates_debian
-      echo "Certificates installed successfully on Linux Mint."
-    else
-      echo "Unsupported Debian-based distribution: $ID"
-      exit 1
-    fi
-  fi
-elif [[ -f /etc/redhat-release ]]; then
-  # Red Hat, Fedora
-  if [[ -f /etc/os-release ]]; then
-    . /etc/os-release
-    if [[ "$ID" == "rhel" ]]; then
-      update_certificates_redhat
-      echo "Certificates installed successfully on Red Hat."
-    elif [[ "$ID" == "fedora" ]]; then
-      update_certificates_redhat
-      echo "Certificates installed successfully on Fedora."
-    else
-      echo "Unsupported Red Hat-based distribution: $ID"
-      exit 1
-    fi
-  fi
-else
-  echo "Unsupported operating system."
-  exit 1
-fi
-
-echo "Certificates installed successfully."
+echo "Certificates installed and CA certificates updated successfully."
