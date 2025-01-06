@@ -31,7 +31,7 @@ function Download-AndInstallCert {
         Remove-Item $filename
         foreach ($cert in Get-ChildItem -Path ZscalerRootCerts -Filter *.crt) {
 			Write-Host "Importing ZScaler $($cert.Name) ..."
-			Import-Certificate -FilePath $cert.Name -CertStoreLocation Cert:\LocalMachine\Root
+			Import-Certificate -FilePath ZscalerRootCerts/$cert -CertStoreLocation Cert:\LocalMachine\Root
         }
         Remove-Item -Recurse -Force ZscalerRootCerts
     } else {
