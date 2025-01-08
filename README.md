@@ -9,5 +9,4 @@ Linux
 Windows
 
 ```console
-Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/TristanFAURE/LEAP/main/install_certificate.ps1' -UseBasicParsing | Invoke-Expression`"" -Verb RunAs
-```
+Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { `$true }; (New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/TristanFAURE/LEAP/main/install_certificate.ps1') | Invoke-Expression`"" -Verb RunAs```
