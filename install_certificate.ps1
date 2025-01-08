@@ -1,6 +1,9 @@
 #Requires -RunAsAdministrator
 
-# /!\ Temporarily set script permissions: Set-ExecutionPolicy RemoteSigned (then reset Set-ExecutionPolicy Restricted afterwards)
+# /!\ Temporarily set script permissions: `Set-ExecutionPolicy Bypass -Scope Process -Force;`
+
+# Disable server certificate validation
+[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true };
 
 # URLs of the certificates to download
 $CERT_URLS = @(
@@ -19,7 +22,7 @@ function Download-AndInstallCert {
     )
 	
     $filename = Split-Path $url -Leaf
-    Invoke-WebRequest -Uri $url -OutFile $filename
+    (New-Object Net.WebClient).DownloadFile($url, $filename)
 
     if (-not (Test-Path $filename)) {
         Write-Error "Failed to download $filename."
