@@ -2,8 +2,8 @@
 
 Linux
 
-```console
- curl -s -k https://raw.githubusercontent.com/TristanFAURE/LEAP/main/install_certificate.sh | sudo bash /dev/stdin
+```bash
+ curl -s -k https://raw.githubusercontent.com/TristanFAURE/LEAP/main/install_certificate.sh | sudo LEAP_PASSWORD=<password> bash /dev/stdin
 ```
 
 Windows

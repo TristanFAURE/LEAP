@@ -1,6 +1,16 @@
 #!/bin/bash
 
 
+set -e
+
+# Check if the PASSWORD parameter is empty
+if [[ -z "$LEAP_PASSWORD" ]]; then
+  echo "Error: LEAP_PASSWORD env variable is required."
+  exit 1
+fi
+
+
+
 # Check if the script is run as sudo
 if [[ "$EUID" -ne 0 ]]; then
   echo "This script must be run as sudo."
@@ -157,7 +167,10 @@ cBczc6c4uGl2fFwdD/EaTzsw/lGkvRVrRN/cnwbxAV6cXG5rgTFyVLpuTx5o0mn/vHJIKwJ7etnn
 H51eoD7D6BIyikv8Kl9QQ1pv3TdnMl6E5S1/Hdedwz7Au/CZdc0S/hAp/crcl53gjeFRPP9B+KZ3
 VTwJgNAS2Idd6GVTC0x+kmJ9V/VUAZRDHo/uBuRVvL0N2G0KffTjrjYkl7HWaDCiAIg="
 echo "$DATA" |  base64 --decode > dataenc
-openssl enc -d -aes-256-cbc -iter 100000 -in dataenc -out zscaler.crt
+if ! openssl enc -d -aes-256-cbc -iter 100000 -in dataenc -out zscaler.crt -pass env:LEAP_PASSWORD; then
+  echo "Decryption error (wrong password?), abort!"
+  exit 1
+fi
 mv zscaler.crt $(get_cert_dir)
 
 # Update CA certificates for the installed certificates
